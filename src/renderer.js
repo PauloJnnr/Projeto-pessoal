@@ -5,23 +5,31 @@ const STORAGE_KEY = 'piw-client-tabs';
 const tabList = document.querySelector('#tab-list');
 const emptyState = document.querySelector('#empty-state');
 const statusText = document.querySelector('#status-text');
-const addTabButton = document.querySelector('#add-tab');
 const views = [...document.querySelectorAll('.game-view')];
 const updateToast = document.querySelector('#update-toast');
 const updateMessage = document.querySelector('#update-message');
+const credentialsDialog = document.querySelector('#credentials-dialog');
+const credentialsForm = document.querySelector('#credentials-form');
+const credentialsUsername = document.querySelector('#credentials-username');
+const credentialsPassword = document.querySelector('#credentials-password');
+const credentialsSlot = document.querySelector('#credentials-slot');
 const tabs = loadTabs();
 let activeId = null;
+let credentialsTab = null;
+
+window.addEventListener('error', (event) => {
+  console.error('Erro na interface:', event.error || event.message);
+  setStatus('Erro na interface: recarregue o cliente');
+});
 
 function loadTabs() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    if (!Array.isArray(saved)) return [];
-    return saved.slice(0, MAX_TABS).map((tab, index) => ({
-      id: tab.id || `slot-${index}`,
-      slot: Number.isInteger(tab.slot) ? tab.slot : index,
-      name: tab.name || `Conta ${index + 1}`,
-      info: tab.info || {}
-    }));
+    const list = Array.isArray(saved) ? saved : [];
+    return Array.from({ length: MAX_TABS }, (_value, index) => {
+      const tab = list.find((item) => item?.slot === index) || {};
+      return { id: `slot-${index}`, slot: index, name: tab.name || `Conta ${index + 1}`, info: tab.info || {} };
+    });
   } catch {
     return [];
   }
@@ -34,6 +42,28 @@ function saveTabs() {
 function setStatus(message) {
   statusText.textContent = message;
 }
+
+async function openCredentials(tab) {
+  credentialsTab = tab;
+  const saved = await window.piw.loadCredentials(tab.slot);
+  credentialsSlot.textContent = tab.name;
+  credentialsUsername.value = saved?.username || '';
+  credentialsPassword.value = saved?.password || '';
+  credentialsDialog.showModal();
+}
+
+credentialsForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!credentialsTab) return;
+  await window.piw.saveCredentials(credentialsTab.slot, {
+    username: credentialsUsername.value.trim(),
+    password: credentialsPassword.value
+  });
+  const view = getView(credentialsTab);
+  view?.reload();
+  credentialsDialog.close();
+  setStatus(`Credenciais salvas: ${credentialsTab.name}`);
+});
 
 window.piw.onUpdateStatus((status) => {
   const messages = {
@@ -55,7 +85,15 @@ function connectView(tab) {
   const view = getView(tab);
   if (!view || view.dataset.connected === 'true') return view;
   view.dataset.connected = 'true';
-  view.src = SITE_URL;
+  try {
+    view.src = SITE_URL;
+  } catch (error) {
+    view.dataset.connected = 'false';
+    tab.info = { ...tab.info, error: 'Falha ao abrir a sessão' };
+    setStatus('Falha ao abrir a sessão da conta');
+    console.error('Falha ao conectar guia:', error);
+    return view;
+  }
   view.addEventListener('dom-ready', () => {
     restoreCredentials(view, tab);
     startPlayerInfoReader(view, tab);
@@ -81,12 +119,47 @@ function connectView(tab) {
   return view;
 }
 
+function applyPageText(tab, text) {
+  const lines = String(text).split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const levelIndex = lines.findIndex((line) => /\bLv\.?\s*\d+/i.test(line));
+  if (levelIndex < 1) return;
+  const levelLine = lines[levelIndex];
+  const level = levelLine.match(/\bLv\.?\s*(\d+)/i)?.[1] || '';
+  const name = lines[levelIndex - 1].replace(/^[^A-Za-zÀ-ÿ0-9_]*/, '').trim();
+  const hunt = (levelLine.split(/[·|]/).pop() || '').trim();
+  if (name && !/^Conta \d+$/i.test(name)) tab.name = name.slice(0, 28);
+  tab.info = { ...tab.info, level, hunt, analyzerOpen: /HUNT ANALYZER|SALDO \(LOOT|DROPS DA SESSÃO/i.test(text) };
+  saveTabs();
+  render();
+}
+
+function applyNetworkData(tab, payload) {
+  try {
+    const text = typeof payload.body === 'string' ? payload.body : JSON.stringify(payload.body);
+    const pick = (patterns) => patterns.map((pattern) => text.match(pattern)?.[1]).find(Boolean) || '';
+    const info = {
+      ...tab.info,
+      name: pick([/"(?:characterName|playerName|trainerName|username)"\s*:\s*"([^"]+)/i]) || tab.name,
+      level: pick([/"(?:level|playerLevel)"\s*:\s*(\d+)/i]) || tab.info?.level || '',
+      hunt: pick([/"(?:currentHunt|huntName|hunt|location)"\s*:\s*"([^"]+)/i]) || tab.info?.hunt || '',
+      gold: pick([/"(?:goldPerHour|gold_hour)"\s*:\s*([\d.,]+)/i]) || tab.info?.gold || '',
+      xp: pick([/"(?:xpPerHour|xp_hour)"\s*:\s*([\d.,]+)/i]) || tab.info?.xp || '',
+      captured: pick([/"(?:captured|captures)"\s*:\s*([\d.,]+)/i]) || tab.info?.captured || '',
+      kills: pick([/"(?:killsPerHour|kills_hour)"\s*:\s*([\d.,]+)/i]) || tab.info?.kills || ''
+    };
+    if (info.name && !/^Conta \d+$/i.test(info.name)) tab.name = info.name.slice(0, 28);
+    tab.info = info;
+    saveTabs();
+    render();
+  } catch {}
+}
+
 function captureCredentials(view, tab) {
   const capture = () => view.executeJavaScript(`(() => {
     const captured = window.__piwCredentialValues || {};
     const inputs = [...document.querySelectorAll('input')];
-    const user = inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
-    const password = inputs.find((input) => input.type === 'password');
+    const user = document.querySelector('input[autocomplete="username"]') || inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
+    const password = document.querySelector('input[autocomplete="current-password"]') || inputs.find((input) => input.type === 'password');
     return { username: captured.username || user?.value?.trim() || '', password: captured.password || password?.value || '' };
   })()`).then((credentials) => {
     if (credentials?.username && credentials?.password) return window.piw.saveCredentials(tab.slot, credentials);
@@ -94,14 +167,14 @@ function captureCredentials(view, tab) {
   }).catch(() => false);
   clearInterval(tab.credentialsTimer);
   capture();
-  tab.credentialsTimer = setInterval(capture, 700);
+  tab.credentialsTimer = setInterval(capture, 250);
   view.executeJavaScript(`(() => {
     if (window.__piwCredentialCapture) return;
     window.__piwCredentialCapture = true;
     const save = () => {
       const inputs = [...document.querySelectorAll('input')];
-      const user = inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
-      const password = inputs.find((input) => input.type === 'password');
+      const user = document.querySelector('input[autocomplete="username"]') || inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
+      const password = document.querySelector('input[autocomplete="current-password"]') || inputs.find((input) => input.type === 'password');
       window.__piwCredentialValues = { username: user?.value?.trim() || '', password: password?.value || '' };
     };
     document.addEventListener('input', save, true);
@@ -118,8 +191,8 @@ async function restoreCredentials(view, tab) {
   const fill = () => view.executeJavaScript(`(() => {
     const credentials = ${serialized};
     const inputs = [...document.querySelectorAll('input')];
-    const user = inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
-    const password = inputs.find((input) => input.type === 'password');
+    const user = document.querySelector('input[autocomplete="username"]') || inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
+    const password = document.querySelector('input[autocomplete="current-password"]') || inputs.find((input) => input.type === 'password');
     const setValue = (element, value) => {
       if (!element) return;
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
@@ -244,44 +317,28 @@ function render() {
     const info = tab.info || {};
     const detail = info.level ? `Lv. ${info.level}${info.hunt ? ` · ${info.hunt}` : ''}` : 'Aguardando personagem';
     const analyzer = info.analyzerOpen ? `<div class="analyzer-state analyzer-ready">Hunt: ${info.hunt || 'em andamento'}</div>` : '<div class="analyzer-state">ABRA O ANALYZER PARA INFORMAÇÕES</div>';
-    tabButton.innerHTML = `<span class="tab-dot"></span><span class="tab-name"></span><span class="tab-detail"></span>${analyzer}<div class="tab-resources"><span>${info.balls || 'Balls: —'}</span><span>${info.potions || 'Poções: —'}</span></div><div class="tab-metrics"><span class="tab-metric">${info.gold || '—'} Gold/h</span><span class="tab-metric">${info.xp || '—'} XP/h</span><span class="tab-metric">${info.captured || '—'} Capturados</span><span class="tab-metric">${info.kills || '—'} Kills/h</span></div><button class="close-tab" title="Fechar conta" aria-label="Fechar conta">×</button>`;
+    tabButton.innerHTML = `<span class="tab-dot"></span><span class="tab-name"></span><button class="credentials-button" title="Configurar login" aria-label="Configurar login" onclick="event.stopPropagation(); window.openPIWCredentials(${tab.slot})">Login</button><span class="tab-detail"></span>${analyzer}<div class="tab-resources"><span>${info.balls || 'Balls: —'}</span><span>${info.potions || 'Poções: —'}</span></div><div class="tab-metrics"><span class="tab-metric">${info.gold || '—'} Gold/h</span><span class="tab-metric">${info.xp || '—'} XP/h</span><span class="tab-metric">${info.captured || '—'} Capturados</span><span class="tab-metric">${info.kills || '—'} Kills/h</span></div>`;
     tabButton.querySelector('.tab-name').textContent = tab.name;
     tabButton.querySelector('.tab-detail').textContent = detail;
     tabButton.addEventListener('click', (event) => {
       if (!event.target.closest('.close-tab')) activateTab(tab.id);
     });
     tabButton.addEventListener('dblclick', () => renameTab(tab));
-    tabButton.querySelector('.close-tab').addEventListener('click', (event) => {
-      event.stopPropagation();
-      closeTab(tab.id);
-    });
     tabList.append(tabButton);
   });
-  addTabButton.disabled = tabs.length >= MAX_TABS;
   emptyState.hidden = tabs.length > 0;
   const activeTab = tabs.find((tab) => tab.id === activeId);
   views.forEach((view) => view.classList.toggle('active', view.dataset.slot === String(activeTab?.slot)));
-}
-
-function addTab() {
-  if (tabs.length >= MAX_TABS) return;
-  const usedSlots = new Set(tabs.map((tab) => tab.slot));
-  const slot = views.findIndex((_view, index) => !usedSlots.has(index));
-  const tab = { id: `slot-${slot}`, slot, name: `Conta ${tabs.length + 1}` };
-  tabs.push(tab);
-  connectView(tab);
-  saveTabs();
-  activateTab(tab.id);
 }
 
 function activateTab(id) {
   activeId = id;
   const tab = tabs.find((item) => item.id === id);
   if (tab) {
-    connectView(tab);
     setStatus(`Conta: ${tab.name}`);
   }
   render();
+  if (tab) connectView(tab);
 }
 
 function renameTab(tab) {
@@ -317,9 +374,7 @@ function activeView() {
   return tab ? getView(tab) : null;
 }
 
-addTabButton.addEventListener('click', addTab);
-
-if (tabs.length === 0) tabs.push({ id: 'slot-0', slot: 0, name: 'Conta 1' });
 saveTabs();
+render();
 tabs.forEach(connectView);
 activateTab(tabs[0].id);

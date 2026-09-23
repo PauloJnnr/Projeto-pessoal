@@ -8,22 +8,32 @@
 </head>
 <body>
   <nav class="tabs" aria-label="Contas conectadas">
-    <div id="tab-list" class="tab-list"></div>
-    <button class="add-tab" id="add-tab" title="Adicionar conta" aria-label="Adicionar conta">+</button>
-    <span class="tab-limit">até 4 contas</span>
+    <div id="tab-list" class="tab-list">
+      <div class="tab active" data-id="slot-0" data-fallback="true" onclick="window.switchPIWTab(0)">
+        <span class="tab-dot"></span>
+        <span class="tab-name">Conta 1</span><button class="credentials-button" title="Configurar login" aria-label="Configurar login" onclick="event.stopPropagation(); window.openPIWCredentials(0)">Login</button>
+        <span class="tab-detail">Aguardando personagem</span>
+        <div class="analyzer-state">ABRA O ANALYZER PARA INFORMAÇÕES</div>
+        <div class="tab-resources"><span>Balls: —</span><span>Poções: —</span></div>
+        <div class="tab-metrics"><span class="tab-metric">— Gold/h</span><span class="tab-metric">— XP/h</span><span class="tab-metric">— Capturados</span><span class="tab-metric">— Kills/h</span></div>
+      </div>
+      <div class="tab" data-id="slot-1" data-fallback="true" onclick="window.switchPIWTab(1)"><span class="tab-dot"></span><span class="tab-name">Conta 2</span><button class="credentials-button" title="Configurar login" aria-label="Configurar login" onclick="event.stopPropagation(); window.openPIWCredentials(1)">Login</button><span class="tab-detail">Aguardando personagem</span><div class="analyzer-state">ABRA O ANALYZER PARA INFORMAÇÕES</div><div class="tab-resources"><span>Balls: —</span><span>Poções: —</span></div><div class="tab-metrics"><span class="tab-metric">— Gold/h</span><span class="tab-metric">— XP/h</span><span class="tab-metric">— Capturados</span><span class="tab-metric">— Kills/h</span></div></div>
+      <div class="tab" data-id="slot-2" data-fallback="true" onclick="window.switchPIWTab(2)"><span class="tab-dot"></span><span class="tab-name">Conta 3</span><button class="credentials-button" title="Configurar login" aria-label="Configurar login" onclick="event.stopPropagation(); window.openPIWCredentials(2)">Login</button><span class="tab-detail">Aguardando personagem</span><div class="analyzer-state">ABRA O ANALYZER PARA INFORMAÇÕES</div><div class="tab-resources"><span>Balls: —</span><span>Poções: —</span></div><div class="tab-metrics"><span class="tab-metric">— Gold/h</span><span class="tab-metric">— XP/h</span><span class="tab-metric">— Capturados</span><span class="tab-metric">— Kills/h</span></div></div>
+      <div class="tab" data-id="slot-3" data-fallback="true" onclick="window.switchPIWTab(3)"><span class="tab-dot"></span><span class="tab-name">Conta 4</span><button class="credentials-button" title="Configurar login" aria-label="Configurar login" onclick="event.stopPropagation(); window.openPIWCredentials(3)">Login</button><span class="tab-detail">Aguardando personagem</span><div class="analyzer-state">ABRA O ANALYZER PARA INFORMAÇÕES</div><div class="tab-resources"><span>Balls: —</span><span>Poções: —</span></div><div class="tab-metrics"><span class="tab-metric">— Gold/h</span><span class="tab-metric">— XP/h</span><span class="tab-metric">— Capturados</span><span class="tab-metric">— Kills/h</span></div></div>
+    </div>
   </nav>
 
   <main class="workspace">
-    <section class="empty-state" id="empty-state">
+    <section class="empty-state" id="empty-state" hidden>
       <div class="empty-icon">◈</div>
       <h1>Seu espaço de jogo</h1>
       <p>Abra uma guia para entrar no Poke Idle World.</p>
     </section>
     <div class="webviews" id="webviews">
-      <webview class="game-view" data-slot="0" partition="persist:piw-slot-0"></webview>
-      <webview class="game-view" data-slot="1" partition="persist:piw-slot-1"></webview>
-      <webview class="game-view" data-slot="2" partition="persist:piw-slot-2"></webview>
-      <webview class="game-view" data-slot="3" partition="persist:piw-slot-3"></webview>
+      <webview class="game-view active" data-slot="0" partition="persist:piw-slot-0" src="https://poke.idleworld.online/login"></webview>
+      <webview class="game-view" data-slot="1" partition="persist:piw-slot-1" src="https://poke.idleworld.online/login"></webview>
+      <webview class="game-view" data-slot="2" partition="persist:piw-slot-2" src="https://poke.idleworld.online/login"></webview>
+      <webview class="game-view" data-slot="3" partition="persist:piw-slot-3" src="https://poke.idleworld.online/login"></webview>
     </div>
   </main>
 
@@ -32,10 +42,87 @@
     <span id="status-text">Pronto para conectar</span>
     <span class="shortcut-hint">Duplo clique no nome para renomear</span>
   </footer>
+  <dialog id="credentials-dialog" class="credentials-dialog">
+    <form method="dialog" id="credentials-form">
+      <h2>Configurar conta <span id="credentials-slot"></span></h2>
+      <label>Usuário ou e-mail<input id="credentials-username" autocomplete="username" required></label>
+      <label>Senha<input id="credentials-password" type="password" autocomplete="current-password" required></label>
+      <div class="dialog-actions"><button value="cancel">Cancelar</button><button value="save" class="save-button">Salvar conta</button></div>
+    </form>
+  </dialog>
+  <section id="credentials-panel" class="credentials-panel" hidden>
+    <div class="credentials-heading"><h2>Login da Conta <span id="panel-slot"></span></h2><button type="button" class="panel-close" onclick="window.closePIWCredentials()" aria-label="Fechar">×</button></div>
+    <label>Usuário ou e-mail<input id="panel-username" autocomplete="username"></label>
+    <label>Senha<input id="panel-password" type="password" autocomplete="current-password"></label>
+    <div id="credentials-feedback" class="credentials-feedback"></div>
+    <div class="dialog-actions"><button type="button" onclick="window.closePIWCredentials()">Cancelar</button><button type="button" class="save-button" onclick="window.savePIWCredentials()">Salvar login</button></div>
+  </section>
   <div class="update-toast" id="update-toast" hidden>
     <span id="update-message">Verificando atualizações...</span>
   </div>
 
+  <script>
+    window.switchPIWTab = function (slot) {
+      window.closePIWCredentials();
+      document.querySelectorAll('.tab').forEach(function (tab, index) { tab.classList.toggle('active', index === slot); });
+      document.querySelectorAll('.game-view').forEach(function (view) { view.classList.toggle('active', view.dataset.slot === String(slot)); });
+    };
+    window.openPIWCredentials = async function (slot) {
+      var saved = null;
+      try { saved = await window.piw.loadCredentials(slot); } catch (error) { console.error('Falha ao ler credenciais:', error); }
+      if (!saved) {
+        try { saved = JSON.parse(localStorage.getItem('piw-credentials-' + slot) || 'null'); } catch {}
+      }
+      var panel = document.getElementById('credentials-panel');
+      panel.dataset.slot = String(slot);
+      document.getElementById('panel-slot').textContent = String(slot + 1);
+      document.getElementById('panel-username').value = saved?.username || '';
+      document.getElementById('panel-password').value = saved?.password || '';
+      document.getElementById('credentials-feedback').textContent = saved ? 'Login salvo encontrado.' : '';
+      panel.hidden = false;
+      document.getElementById('panel-username').focus();
+    };
+    window.closePIWCredentials = function () {
+      document.getElementById('credentials-panel').hidden = true;
+      document.getElementById('panel-username').value = '';
+      document.getElementById('panel-password').value = '';
+    };
+    window.savePIWCredentials = async function () {
+      var panel = document.getElementById('credentials-panel');
+      var slot = Number(panel.dataset.slot);
+      var username = document.getElementById('panel-username').value.trim();
+      var password = document.getElementById('panel-password').value;
+      if (!username || !password) return;
+      var credentials = { username: username, password: password };
+      var ipcSaved = false;
+      try { ipcSaved = await window.piw.saveCredentials(slot, credentials); } catch (error) { console.error('Falha ao salvar credenciais:', error); }
+      try { localStorage.setItem('piw-credentials-' + slot, JSON.stringify(credentials)); } catch {}
+      var verified = null;
+      try { verified = await window.piw.loadCredentials(slot); } catch {}
+      var localVerified = null;
+      try { localVerified = JSON.parse(localStorage.getItem('piw-credentials-' + slot) || 'null'); } catch {}
+      if ((!ipcSaved && !localVerified) || localVerified?.username !== username || localVerified?.password !== password) {
+        document.getElementById('credentials-feedback').textContent = 'Não foi possível salvar este login.';
+        return;
+      }
+      document.getElementById('credentials-feedback').textContent = 'Login salvo com sucesso.';
+      panel.hidden = true;
+      var view = document.querySelector('.game-view[data-slot="' + slot + '"]');
+      if (view) {
+        var fill = function () { view.executeJavaScript(`(() => {
+          const user = document.querySelector('input[autocomplete="username"]') || [...document.querySelectorAll('input')].find((input) => input.type !== 'password');
+          const password = document.querySelector('input[autocomplete="current-password"]') || document.querySelector('input[type="password"]');
+          const set = (element, value) => { if (!element) return; const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set; setter?.call(element, value); element.dispatchEvent(new Event('input', { bubbles: true })); element.dispatchEvent(new Event('change', { bubbles: true })); };
+          set(user, ${JSON.stringify(username)}); set(password, ${JSON.stringify(password)});
+          return Boolean(user && password);
+        })()`).catch(() => false); };
+        view.addEventListener('dom-ready', fill, { once: true });
+        view.reload();
+        var attempts = 0;
+        var fillTimer = setInterval(function () { attempts += 1; fill(); if (attempts >= 15) clearInterval(fillTimer); }, 500);
+      }
+    };
+  </script>
   <script src="renderer.js"></script>
 </body>
 </html>

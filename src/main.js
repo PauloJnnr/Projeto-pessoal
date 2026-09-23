@@ -22,6 +22,21 @@ function readCredentials() {
   }
 }
 
+function encryptCredentials(credentials) {
+  if (safeStorage.isEncryptionAvailable()) {
+    return `safe:${safeStorage.encryptString(JSON.stringify(credentials)).toString('base64')}`;
+  }
+  return `plain:${Buffer.from(JSON.stringify(credentials), 'utf8').toString('base64')}`;
+}
+
+function decryptCredentials(value) {
+  try {
+    if (value.startsWith('safe:')) return JSON.parse(safeStorage.decryptString(Buffer.from(value.slice(5), 'base64')));
+    if (value.startsWith('plain:')) return JSON.parse(Buffer.from(value.slice(6), 'base64').toString('utf8'));
+  } catch {}
+  return null;
+}
+
 function writeCredentials(credentials) {
   fs.mkdirSync(path.dirname(credentialsFile()), { recursive: true });
   fs.writeFileSync(credentialsFile(), JSON.stringify(credentials), { mode: 0o600 });
@@ -76,6 +91,12 @@ function createWindow() {
   });
   window.loadFile(path.join(__dirname, 'index.html'));
   window.webContents.once('did-finish-load', () => setupAutoUpdater(window));
+  window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 2) console.error(`[renderer ${sourceId}:${line}] ${message}`);
+  });
+  window.webContents.on('render-process-gone', (_event, details) => {
+    console.error(`Renderer encerrado: ${details.reason}`);
+  });
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://poke.idleworld.online/')) return { action: 'allow' };
     shell.openExternal(url);
@@ -87,18 +108,13 @@ app.whenReady().then(() => {
   ipcMain.handle('app:version', () => app.getVersion());
   ipcMain.handle('credentials:load', (_event, slot) => {
     const stored = readCredentials()[String(slot)];
-    if (!stored || !safeStorage.isEncryptionAvailable()) return null;
-    try {
-      return JSON.parse(safeStorage.decryptString(Buffer.from(stored, 'base64')));
-    } catch {
-      return null;
-    }
+    return stored ? decryptCredentials(stored) : null;
   });
 
   ipcMain.handle('credentials:save', (_event, slot, credentials) => {
-    if (!safeStorage.isEncryptionAvailable() || !credentials?.username || !credentials?.password) return false;
+    if (!credentials?.username || !credentials?.password) return false;
     const stored = readCredentials();
-    stored[String(slot)] = safeStorage.encryptString(JSON.stringify(credentials)).toString('base64');
+    stored[String(slot)] = encryptCredentials(credentials);
     writeCredentials(stored);
     return true;
   });

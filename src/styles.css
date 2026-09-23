@@ -67,6 +67,8 @@ button { font: inherit; }
 .tab.active { border-color: #dbe4ed; box-shadow: inset 3px 0 0 var(--accent); color: var(--ink); background: #171e26; }
 .tab-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--green); }
 .tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; }
+.credentials-button { justify-self: end; padding: 2px 7px; border: 1px solid #485766; border-radius: 4px; color: #dce5ed; background: #202a34; cursor: pointer; font-size: 9px; }
+.credentials-button:hover { color: var(--accent); }
 .tab-detail { grid-column: 1 / -1; overflow: hidden; color: #8d99a8; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .analyzer-state { grid-column: 1 / -1; align-self: center; overflow: hidden; padding: 3px 6px; border: 1px solid #a87911; border-radius: 4px; color: #f6d36e; background: #43350d; font-size: 9px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .analyzer-ready { border-color: #23664b; color: #82e1af; background: #103b2c; }
@@ -74,11 +76,7 @@ button { font: inherit; }
 .tab-resources span { overflow: hidden; padding: 3px 5px; border: 1px solid #303b48; border-radius: 4px; text-overflow: ellipsis; }
 .tab-metrics { grid-column: 1 / -1; display: flex; gap: 4px; min-width: 0; }
 .tab-metric { flex: 1; min-width: 0; padding: 3px 5px; border: 1px solid #303b48; border-radius: 4px; color: #d7e0e8; font-size: 9px; line-height: 1.1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
-.close-tab { position: absolute; top: 4px; right: 5px; padding: 1px 3px; border: 0; color: #6e7987; background: transparent; cursor: pointer; }
-.close-tab:hover { color: #f28a7b; }
-.add-tab { width: 44px; font-size: 22px; }
-.add-tab:hover { color: var(--accent); }
-.tab-limit { align-self: center; margin: 0 5px 0 10px; color: #657181; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+.close-tab, .add-tab, .tab-limit { display: none; }
 
 .workspace { position: relative; height: calc(100vh - 164px); background: #11151c; }
 .empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
@@ -98,6 +96,24 @@ button { font: inherit; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 .shortcut-hint { margin-left: auto; color: #657181; }
 .update-toast { position: fixed; right: 18px; bottom: 50px; z-index: 10; padding: 10px 14px; border: 1px solid #46617a; border-radius: 6px; color: #dce9f5; background: #1b2a38; box-shadow: 0 8px 24px #0008; font-size: 11px; }
+.credentials-dialog { min-width: 340px; padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: #171d25; }
+.credentials-panel { position: fixed; top: 145px; left: 50%; z-index: 20; width: 340px; transform: translateX(-50%); display: grid; gap: 12px; padding: 20px; border: 1px solid var(--accent); border-radius: 8px; color: var(--ink); background: #171d25; box-shadow: 0 12px 40px #000b; }
+.credentials-panel[hidden] { display: none !important; }
+.credentials-heading { display: flex; align-items: center; justify-content: space-between; }
+.credentials-panel h2 { margin: 0; font-size: 17px; }
+.panel-close { border: 0; color: var(--muted); background: transparent; cursor: pointer; font-size: 22px; line-height: 1; }
+.panel-close:hover { color: #f28a7b; }
+.credentials-panel label { display: grid; gap: 5px; color: var(--muted); font-size: 11px; }
+.credentials-panel input { padding: 9px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); background: #10151b; }
+.credentials-feedback { min-height: 15px; color: var(--green); font-size: 11px; }
+.credentials-dialog::backdrop { background: #0009; }
+.credentials-dialog form { display: grid; gap: 14px; padding: 22px; }
+.credentials-dialog h2 { margin: 0 0 4px; font-size: 17px; }
+.credentials-dialog label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; }
+.credentials-dialog input { padding: 9px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); background: #10151b; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.dialog-actions button { padding: 8px 11px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); background: transparent; cursor: pointer; }
+.dialog-actions .save-button { border-color: var(--accent); color: #171717; background: var(--accent); }
 
 @media (max-width: 760px) {
   .topbar { padding: 0 12px; }

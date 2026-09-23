@@ -9,7 +9,7 @@ const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 test('captura credenciais digitadas e recupera valores capturados', () => {
   assert.match(renderer, /window\.__piwCredentialValues/);
   assert.match(renderer, /window\.piw\.saveCredentials\(tab\.slot, credentials\)/);
-  assert.match(renderer, /setInterval\(capture, 700\)/);
+  assert.match(renderer, /setInterval\(capture, 250\)/);
 });
 
 test('leitor consulta DOM, storage e estado React/runtime', () => {
@@ -23,6 +23,7 @@ test('leitor consulta DOM, storage e estado React/runtime', () => {
 test('cliente usa quatro sessoes persistentes', () => {
   assert.equal((index.match(/partition="persist:piw-slot-/g) || []).length, 4);
   assert.match(renderer, /MAX_TABS = 4/);
+  assert.equal((index.match(/switchPIWTab\(/g) || []).length, 4);
 });
 
 test('identificacao compacta fica na barra nativa', () => {
@@ -34,4 +35,9 @@ test('updater e versao de release estao configurados', () => {
   assert.equal(packageJson.dependencies['electron-updater'], '^6.6.2');
   assert.equal(packageJson.build.publish.provider, 'github');
   assert.ok(packageJson.version);
+});
+
+test('captura de dados nao bloqueia a navegacao da webview', () => {
+  assert.doesNotMatch(renderer, /view\.setAttribute\('preload'/);
+  assert.match(renderer, /view\.src = SITE_URL/);
 });
