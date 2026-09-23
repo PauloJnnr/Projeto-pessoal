@@ -38,6 +38,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: PIW Client ${{ github.ref_name }}
           generate_release_notes: true
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
           files: |
             release/latest.yml
             release/PIW-Client-Setup-*.exe
