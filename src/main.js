@@ -74,6 +74,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  ipcMain.handle('app:version', () => app.getVersion());
   ipcMain.handle('credentials:load', (_event, slot) => {
     const stored = readCredentials()[String(slot)];
     if (!stored || !safeStorage.isEncryptionAvailable()) return null;

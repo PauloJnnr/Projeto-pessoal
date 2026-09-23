@@ -12,6 +12,10 @@ const updateMessage = document.querySelector('#update-message');
 const tabs = loadTabs();
 let activeId = null;
 
+window.piw.getVersion().then((version) => {
+  document.querySelector('#client-version').textContent = `versão ${version}`;
+}).catch(() => {});
+
 function loadTabs() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -170,21 +174,49 @@ function startPlayerInfoReader(view, tab) {
       return label + ' ' + (node.parentElement?.innerText || '').replace(/\\s+/g, ' ');
     }).join(' | ');
     const resourceText = text + ' | ' + tooltips;
+    const runtimeParts = [];
+    const addRuntime = (key, value) => {
+      if (value === null || value === undefined || typeof value === 'function') return;
+      const normalized = typeof value === 'object' ? JSON.stringify(value) : String(value);
+      if (normalized && normalized.length < 300) runtimeParts.push(key + ': ' + normalized);
+    };
+    for (const storage of [localStorage, sessionStorage]) {
+      for (let index = 0; index < storage.length; index += 1) {
+        const key = storage.key(index) || '';
+        if (/player|character|trainer|username|level|hunt|analyzer|gold|xp|ball|potion/i.test(key)) addRuntime(key, storage.getItem(key));
+      }
+    }
+    const visited = new Set();
+    const scan = (object, prefix, depth) => {
+      if (!object || depth > 3 || visited.has(object)) return;
+      visited.add(object);
+      for (const key of Object.keys(object).slice(0, 120)) {
+        if (!/player|character|trainer|username|level|hunt|analyzer|gold|xp|ball|potion|capture|kill/i.test(key)) continue;
+        try {
+          const value = object[key];
+          addRuntime(prefix + key, value);
+          if (value && typeof value === 'object') scan(value, prefix + key + '.', depth + 1);
+        } catch {}
+      }
+    };
+    scan(window, 'window.', 0);
+    const runtimeText = runtimeParts.join(' | ');
+    const source = text + ' | ' + runtimeText;
     const balls = resourceText.match(/(?:balls?|pok[eé]bolas?)[^|]{0,40}/i)?.[0]?.trim() || '';
     const potions = resourceText.match(/(?:potions?|po[cç][oõ]es?)[^|]{0,40}/i)?.[0]?.trim() || '';
     const analyzerOpen = /HUNT ANALYZER|SALDO \\(LOOT|DROPS DA SESSÃO/i.test(text);
     return {
-      name: name && !/^Conta \\d+$/i.test(name) ? name : '',
-      level: levelMatch?.[1] || '',
-      hunt: (levelLine.split(/[·|]/).pop() || '').trim(),
-      gold: valueFor('Gold\\/h'),
-      xp: valueFor('XP\\/h'),
-      captured: valueFor('Capturados'),
-      kills: valueFor('Kills\\/h'),
+      name: name && !/^Conta \\d+$/i.test(name) ? name : source.match(/(?:characterName|playerName|trainerName|username)\\s*[:=]\\s*["']([^"']+)/i)?.[1] || '',
+      level: levelMatch?.[1] || source.match(/(?:level|playerLevel)\\s*[:=]\\s*["']?(\\d+)/i)?.[1] || '',
+      hunt: (levelLine.split(/[·|]/).pop() || source.match(/(?:currentHunt|huntName|hunt)\\s*[:=]\\s*["']([^"']+)/i)?.[1] || '').trim(),
+      gold: valueFor('Gold\\/h') || source.match(/(?:goldPerHour|gold_hour)\\s*[:=]\\s*["']?([\\d.,]+)/i)?.[1] || '',
+      xp: valueFor('XP\\/h') || source.match(/(?:xpPerHour|xp_hour)\\s*[:=]\\s*["']?([\\d.,]+)/i)?.[1] || '',
+      captured: valueFor('Capturados') || source.match(/(?:captured|captures)\\s*[:=]\\s*["']?([\\d.,]+)/i)?.[1] || '',
+      kills: valueFor('Kills\\/h') || source.match(/(?:killsPerHour|kills_hour)\\s*[:=]\\s*["']?([\\d.,]+)/i)?.[1] || '',
       balls,
       potions,
       analyzerOpen,
-      resources: [balls, potions].filter(Boolean).join(' | ')
+      resources: [balls, potions, runtimeText].filter(Boolean).join(' | ')
     };
   })()`);
   read.then((info) => {

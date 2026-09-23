@@ -80,7 +80,7 @@ button { font: inherit; }
 .add-tab:hover { color: var(--accent); }
 .tab-limit { align-self: center; margin: 0 5px 0 10px; color: #657181; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
 
-.workspace { position: relative; height: calc(100vh - 164px); background: #11151c; }
+.workspace { position: relative; height: calc(100vh - 234px); background: #11151c; }
 .empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .empty-state[hidden] { display: none; }
 .empty-icon { margin-bottom: 20px; color: var(--accent); font-size: 42px; }
