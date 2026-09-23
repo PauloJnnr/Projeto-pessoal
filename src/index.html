@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PIW Client</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="tabs" aria-label="Contas conectadas">
+    <div id="tab-list" class="tab-list"></div>
+    <button class="add-tab" id="add-tab" title="Adicionar conta" aria-label="Adicionar conta">+</button>
+    <span class="tab-limit">até 4 contas</span>
+  </nav>
+
+  <main class="workspace">
+    <section class="empty-state" id="empty-state">
+      <div class="empty-icon">◈</div>
+      <h1>Seu espaço de jogo</h1>
+      <p>Abra uma guia para entrar no Poke Idle World.</p>
+    </section>
+    <div class="webviews" id="webviews">
+      <webview class="game-view" data-slot="0" partition="persist:piw-slot-0"></webview>
+      <webview class="game-view" data-slot="1" partition="persist:piw-slot-1"></webview>
+      <webview class="game-view" data-slot="2" partition="persist:piw-slot-2"></webview>
+      <webview class="game-view" data-slot="3" partition="persist:piw-slot-3"></webview>
+    </div>
+  </main>
+
+  <footer class="statusbar">
+    <span class="status-dot"></span>
+    <span id="status-text">Pronto para conectar</span>
+    <span class="shortcut-hint">Duplo clique no nome para renomear</span>
+  </footer>
+  <div class="update-toast" id="update-toast" hidden>
+    <span id="update-message">Verificando atualizações...</span>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "name": "piw-client",
+  "version": "1.0.0",
+  "description": "Cliente desktop para o Poke Idle World",
+  "main": "src/main.js",
+  "author": "PIW",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "pack": "electron-builder --dir",
+    "release": "electron-builder --win --publish always",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.0",
+    "electron-updater": "^6.6.2"
+  },
+  "build": {
+    "appId": "online.idleworld.poke.client",
+    "productName": "PIW Client",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "PIW-Client-Setup-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "SEU_USUARIO_GITHUB",
+      "repo": "piw-client"
+    }
+  }
+}
