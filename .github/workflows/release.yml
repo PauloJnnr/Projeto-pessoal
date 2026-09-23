@@ -27,7 +27,14 @@ jobs:
       - name: Configurar repositorio da Release
         run: npm pkg set build.publish.owner="${{ github.repository_owner }}" build.publish.repo="${{ github.event.repository.name }}"
 
-      - name: Publicar GitHub Release
-        run: npm run release
+      - name: Construir instalador
+        run: npm run dist
+
+      - name: Criar GitHub Release com instalador
+        shell: pwsh
+        run: |
+          $assets = @(Get-ChildItem release -File | Where-Object { $_.Name -match '^(latest\.yml|PIW-Client-Setup-.*\.(exe|blockmap))$' } | ForEach-Object { $_.FullName })
+          if ($assets.Count -lt 2) { throw 'Os artefatos latest.yml e instalador não foram gerados.' }
+          gh release create $env:GITHUB_REF_NAME $assets --title "PIW Client $env:GITHUB_REF_NAME" --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
