@@ -12,7 +12,7 @@ Cliente desktop do Poke Idle World, distribuido por GitHub Releases.
 git add .
 git commit -m "Preparar atualizacao automatica"
 git branch -M main
-git remote add origin https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
+git remote add origin https://github.com/PauloJnnr/PIW-Cliente.git
 git push -u origin main
 git tag v1.0.0
 git push origin v1.0.0
