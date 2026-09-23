@@ -1,6 +1,6 @@
 {
   "name": "piw-client",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Cliente desktop para o Poke Idle World",
   "main": "src/main.js",
   "author": "PIW",
@@ -10,7 +10,8 @@
     "dist": "electron-builder --win",
     "pack": "electron-builder --dir",
     "release": "electron-builder --win --publish never",
-    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js"
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js",
+    "test": "node --test test/**/*.test.js"
   },
   "dependencies": {
     "electron-updater": "^6.6.2"

@@ -70,6 +70,10 @@ function createWindow() {
   });
 
   window.setMenuBarVisibility(false);
+  window.on('page-title-updated', (event) => {
+    event.preventDefault();
+    window.setTitle(`PIW Client v${app.getVersion()}`);
+  });
   window.loadFile(path.join(__dirname, 'index.html'));
   window.webContents.once('did-finish-load', () => setupAutoUpdater(window));
   window.webContents.setWindowOpenHandler(({ url }) => {

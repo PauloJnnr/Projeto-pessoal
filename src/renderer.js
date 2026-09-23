@@ -12,10 +12,6 @@ const updateMessage = document.querySelector('#update-message');
 const tabs = loadTabs();
 let activeId = null;
 
-window.piw.getVersion().then((version) => {
-  document.querySelector('#client-version').textContent = `versão ${version}`;
-}).catch(() => {});
-
 function loadTabs() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -87,10 +83,11 @@ function connectView(tab) {
 
 function captureCredentials(view, tab) {
   const capture = () => view.executeJavaScript(`(() => {
+    const captured = window.__piwCredentialValues || {};
     const inputs = [...document.querySelectorAll('input')];
     const user = inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
     const password = inputs.find((input) => input.type === 'password');
-    return { username: user?.value?.trim() || '', password: password?.value || '' };
+    return { username: captured.username || user?.value?.trim() || '', password: captured.password || password?.value || '' };
   })()`).then((credentials) => {
     if (credentials?.username && credentials?.password) return window.piw.saveCredentials(tab.slot, credentials);
     return false;
@@ -177,7 +174,8 @@ function startPlayerInfoReader(view, tab) {
     const runtimeParts = [];
     const addRuntime = (key, value) => {
       if (value === null || value === undefined || typeof value === 'function') return;
-      const normalized = typeof value === 'object' ? JSON.stringify(value) : String(value);
+      let normalized = '';
+      try { normalized = typeof value === 'object' ? JSON.stringify(value) : String(value); } catch { normalized = '[object]'; }
       if (normalized && normalized.length < 300) runtimeParts.push(key + ': ' + normalized);
     };
     for (const storage of [localStorage, sessionStorage]) {
@@ -200,6 +198,13 @@ function startPlayerInfoReader(view, tab) {
       }
     };
     scan(window, 'window.', 0);
+    for (const node of nodes.slice(0, 600)) {
+      for (const key of Object.keys(node)) {
+        if (/react|fiber|props|state/i.test(key)) {
+          try { scan(node[key], 'dom.' + key + '.', 0); } catch {}
+        }
+      }
+    }
     const runtimeText = runtimeParts.join(' | ');
     const source = text + ' | ' + runtimeText;
     const balls = resourceText.match(/(?:balls?|pok[eé]bolas?)[^|]{0,40}/i)?.[0]?.trim() || '';
