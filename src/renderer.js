@@ -84,34 +84,60 @@ function connectView(tab) {
 function captureCredentials(view, tab) {
   const capture = () => view.executeJavaScript(`(() => {
     const inputs = [...document.querySelectorAll('input')];
-    const user = inputs.find((input) => /email|usu[aá]rio|username/i.test(input.name + ' ' + input.placeholder));
+    const user = inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
     const password = inputs.find((input) => input.type === 'password');
-    return { username: user?.value || '', password: password?.value || '' };
+    return { username: user?.value?.trim() || '', password: password?.value || '' };
   })()`).then((credentials) => {
-    if (credentials?.username && credentials?.password) {
-      window.piw.saveCredentials(tab.slot, credentials);
-    }
-  }).catch(() => {});
+    if (credentials?.username && credentials?.password) return window.piw.saveCredentials(tab.slot, credentials);
+    return false;
+  }).catch(() => false);
   clearInterval(tab.credentialsTimer);
-  tab.credentialsTimer = setInterval(capture, 1000);
+  capture();
+  tab.credentialsTimer = setInterval(capture, 700);
+  view.executeJavaScript(`(() => {
+    if (window.__piwCredentialCapture) return;
+    window.__piwCredentialCapture = true;
+    const save = () => {
+      const inputs = [...document.querySelectorAll('input')];
+      const user = inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
+      const password = inputs.find((input) => input.type === 'password');
+      window.__piwCredentialValues = { username: user?.value?.trim() || '', password: password?.value || '' };
+    };
+    document.addEventListener('input', save, true);
+    document.addEventListener('change', save, true);
+    document.addEventListener('submit', save, true);
+    save();
+  })()`).catch(() => {});
 }
 
 async function restoreCredentials(view, tab) {
   const credentials = await window.piw.loadCredentials(tab.slot);
   if (!credentials) return;
-  const fields = await view.executeJavaScript(`(() => {
+  const serialized = JSON.stringify(credentials);
+  const fill = () => view.executeJavaScript(`(() => {
+    const credentials = ${serialized};
     const inputs = [...document.querySelectorAll('input')];
-    const user = inputs.find((input) => /email|usu[aá]rio|username/i.test(input.name + ' ' + input.placeholder));
+    const user = inputs.find((input) => /email|usu[aá]rio|username|login/i.test(input.name + ' ' + input.id + ' ' + input.placeholder)) || inputs.find((input) => input.type !== 'password');
     const password = inputs.find((input) => input.type === 'password');
-    return { user: user?.name || user?.id || '', password: password?.name || password?.id || '' };
-  })()`);
-  if (!fields?.user || !fields?.password) return;
-  await view.executeJavaScript(`(() => {
-    const user = document.querySelector('#${fields.user}, [name="${fields.user}"]');
-    const password = document.querySelector('#${fields.password}, [name="${fields.password}"]');
-    if (user) { user.value = ${JSON.stringify(credentials.username)}; user.dispatchEvent(new Event('input', { bubbles: true })); }
-    if (password) { password.value = ${JSON.stringify(credentials.password)}; password.dispatchEvent(new Event('input', { bubbles: true })); }
-  })()`);
+    const setValue = (element, value) => {
+      if (!element) return;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(element, value);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    setValue(user, credentials.username);
+    setValue(password, credentials.password);
+    return Boolean(user && password);
+  })()`).catch(() => false);
+  await fill();
+  clearInterval(tab.restoreTimer);
+  let attempts = 0;
+  tab.restoreTimer = setInterval(() => {
+    attempts += 1;
+    fill();
+    if (attempts >= 12) clearInterval(tab.restoreTimer);
+  }, 1000);
 }
 
 function startPlayerInfoReader(view, tab) {
@@ -158,7 +184,7 @@ function startPlayerInfoReader(view, tab) {
       balls,
       potions,
       analyzerOpen,
-      resources: [balls, potions, resources].filter(Boolean).join(' | ')
+      resources: [balls, potions].filter(Boolean).join(' | ')
     };
   })()`);
   read.then((info) => {
@@ -236,6 +262,7 @@ function closeTab(id) {
   const view = getView(closedTab);
   clearInterval(closedTab.infoTimer);
   clearInterval(closedTab.credentialsTimer);
+  clearInterval(closedTab.restoreTimer);
   if (view) {
     view.removeAttribute('src');
     view.dataset.connected = 'false';

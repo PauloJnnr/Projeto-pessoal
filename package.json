@@ -1,6 +1,6 @@
 {
   "name": "piw-client",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Cliente desktop para o Poke Idle World",
   "main": "src/main.js",
   "author": "PIW",
