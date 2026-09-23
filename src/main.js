@@ -4,6 +4,11 @@ const path = require('node:path');
 const fs = require('node:fs');
 
 const SITE_URL = 'https://poke.idleworld.online/login';
+const cacheDirectory = path.join(app.getPath('userData'), 'Cache');
+fs.mkdirSync(cacheDirectory, { recursive: true });
+app.setPath('cache', cacheDirectory);
+app.commandLine.appendSwitch('disk-cache-dir', cacheDirectory);
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 
 function credentialsFile() {
   return path.join(app.getPath('userData'), 'piw-credentials.json');
@@ -52,6 +57,7 @@ function createWindow() {
     height: 900,
     minWidth: 960,
     minHeight: 620,
+    title: `PIW Client v${app.getVersion()}`,
     backgroundColor: '#11151c',
     autoHideMenuBar: true,
     webPreferences: {
