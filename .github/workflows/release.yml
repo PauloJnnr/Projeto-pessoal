@@ -32,16 +32,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Criar GitHub Release com instalador
-        shell: pwsh
-        run: |
-          $assets = @(Get-ChildItem release -File | Where-Object { $_.Name -match '^(latest\.yml|PIW-Client-Setup-.*\.(exe|blockmap))$' } | ForEach-Object { $_.FullName })
-          if ($assets.Count -lt 2) { throw 'Os artefatos latest.yml e instalador não foram gerados.' }
-          gh release view $env:GITHUB_REF_NAME 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $env:GITHUB_REF_NAME $assets --title "PIW Client $env:GITHUB_REF_NAME" --generate-notes
-          } else {
-            gh release upload $env:GITHUB_REF_NAME $assets --clobber
-          }
+      - name: Publicar GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: PIW Client ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release/latest.yml
+            release/PIW-Client-Setup-*.exe
+            release/PIW-Client-Setup-*.blockmap
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
