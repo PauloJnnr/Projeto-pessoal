@@ -28,13 +28,20 @@ jobs:
         run: npm pkg set build.publish.owner="${{ github.repository_owner }}" build.publish.repo="${{ github.event.repository.name }}"
 
       - name: Construir instalador
-        run: npm run dist
+        run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Criar GitHub Release com instalador
         shell: pwsh
         run: |
           $assets = @(Get-ChildItem release -File | Where-Object { $_.Name -match '^(latest\.yml|PIW-Client-Setup-.*\.(exe|blockmap))$' } | ForEach-Object { $_.FullName })
           if ($assets.Count -lt 2) { throw 'Os artefatos latest.yml e instalador não foram gerados.' }
-          gh release create $env:GITHUB_REF_NAME $assets --title "PIW Client $env:GITHUB_REF_NAME" --generate-notes
+          gh release view $env:GITHUB_REF_NAME 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:GITHUB_REF_NAME $assets --title "PIW Client $env:GITHUB_REF_NAME" --generate-notes
+          } else {
+            gh release upload $env:GITHUB_REF_NAME $assets --clobber
+          }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
